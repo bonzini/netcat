@@ -33,6 +33,7 @@
 #include <signal.h>
 #include <sys/types.h>
 #include <stdarg.h>
+#include <limits.h>
 #include <setjmp.h>
 #include <unistd.h>
 #include <sys/socket.h>		/* basics, SO_ and AF_ defs, sockaddr, ... */
