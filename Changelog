@@ -1,5 +1,6 @@
 2.0-alpha4
 	use getnameinfo to restore printing of resolved host names
+	portability improvements
 2.0-alpha3
 	fix bug when there is outgoing data and the peer exits
 2.0-alpha2

@@ -4,13 +4,6 @@ favorite functionality, or otherwise caused you to be
 upset, please tell me at bonzini@gnu.org.  Patches are
 welcome, but flames are too.
 
-I know that netcat -v -v is less useful in that it does not
-do reverse DNS anymore: this is a fall-out of adding IPv6,
-if you know of a generic way (or have a generic routine)
-to extract a numeric address from a `struct sockaddr'
-please tell me.  In the source code, the parts that
-attended to this are marked as #if 0.
-
 I tried to made the source code as readable as possible,
 but I might have missed obvious opportunities: indications
 for these things are also welcome.

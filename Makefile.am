@@ -1,7 +1,9 @@
 AUTOMAKE_OPTIONS = foreign
 
+AM_CPPFLAGS = -I.
 AM_CFLAGS = -Wall
-nc_SOURCES = netcat.c
+nc_SOURCES = netcat.c getopt.c getopt1.c
+noinst_HEADERS = getopt.h
 nc_LDADD = @LIBOBJS@
 bin_PROGRAMS = nc
 dist_man1_MANS = nc.1

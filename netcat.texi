@@ -9,7 +9,7 @@
 @c ******************************************* Values and macros *********
 @dircategory Netcat
 @direntry
-     * Netcat: (gst).                 TCP/IP swiss army knife.
+     * Netcat: (netcat).              TCP/IP swiss army knife.
 @end direntry
 
 @copying

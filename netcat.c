@@ -964,7 +964,7 @@ socket_loop ()
 	  if (o_quit >= 0)
 	    {
 	      if (o_quit > 0 && sigsetjmp (jbuf, 1) == 0)
-		set_timeout (o_wait);
+		set_timeout (o_quit);
 	      else
 	        /* Timeout, or user asked to die now! */
 	        break;
