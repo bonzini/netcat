@@ -482,6 +482,17 @@ get_sock_name (struct sockaddr *sa, int salen, char *host, char *serv,
       strcpy (serv, ADDR_STRING (default_serv));
      }
 
+  /* IPv6 host addresses are printed in brackets when they are followed by
+     a port -- which is always true in netcat.  */
+  if (strchr (host, ':'))
+    {
+      int len = strlen (host);
+      memmove (host + 1, host, len + 1);
+      host[0] = '[';
+      host[len+1] = ']';
+      host[len+2] = '\0';
+    }
+
   if (name && !o_numeric)
     {
       gai_errno = getnameinfo (sa, salen, name, NI_MAXHOST, NULL, 0,
@@ -510,21 +521,23 @@ connect_socket (char *remote_addr, char *remote_port,
   int rc, x;
   errno = 0;
 
+  gai_hints.ai_socktype = proto == IPPROTO_UDP ? SOCK_DGRAM : SOCK_STREAM;
+  gai_hints.ai_protocol = proto;
+  gai_hints.ai_flags &= ~AI_PASSIVE;
+
+  /* Do our getaddrinfo before opening the socket, so that ai_family is
+     set to AF_INET6 if necessary.  */
+  if ((gai_errno =
+      getaddrinfo (remote_addr, remote_port, &gai_hints, &whereto)))
+    bail ("cannot resolve %s:%s", ADDR_STRING (remote_addr),
+	  ADDR_STRING (remote_port));
+  else
+    errno = 0;
+
   /* grab a socket; set opts.  */
   rc = fd = bind_socket (local_addr, local_port, proto);
   if (fd >= 0)
     {
-      gai_hints.ai_socktype = proto == IPPROTO_UDP ? SOCK_DGRAM : SOCK_STREAM;
-      gai_hints.ai_protocol = proto;
-      gai_hints.ai_flags &= ~AI_PASSIVE;
-
-      if ((gai_errno =
-	   getaddrinfo (remote_addr, remote_port, &gai_hints, &whereto)))
-	bail ("cannot resolve %s:%s", ADDR_STRING (remote_addr),
-	      ADDR_STRING (remote_port));
-      else
- 	errno = 0;
-
       /* wrap connect inside a timer, and hit it */
       if (sigsetjmp (jbuf, 1) == 0)
 	{
@@ -544,12 +557,16 @@ connect_socket (char *remote_addr, char *remote_port,
       if (fd >= 0)
 	close (fd);
       fd = -1;
+      sai_remote = *whereto->ai_addr;
+      x = whereto->ai_addrlen;
     }
-
-  x = sizeof (struct sockaddr);
-  rc = getpeername (fd, (struct sockaddr *) &sai_remote, &x);
-  if (rc < 0)
-    bail ("cannot retrieve peer socket address");
+  else
+    {
+      x = sizeof (struct sockaddr);
+      rc = getpeername (fd, (struct sockaddr *) &sai_remote, &x);
+      if (rc < 0)
+        bail ("cannot retrieve peer socket address");
+    }
 
   get_sock_name (&sai_remote, x, host, serv, remote_host_name,
 		 remote_addr, remote_port);
@@ -563,14 +580,15 @@ connect_socket (char *remote_addr, char *remote_port,
       if (o_numeric)
         msg (level, "cannot connect to %s:%s", host, serv);
       else
-        msg (level, "cannot connect to %s:%s [%s]", host, serv, remote_host_name);
+        msg (level, "cannot connect to %s:%s (%s)", host, serv,
+	     remote_host_name);
     }
   else
     {
       if (o_numeric)
         verbose_msg ("%s:%s open", host, serv);
       else
-        verbose_msg ("%s:%s [%s] open", host, serv, remote_host_name);
+        verbose_msg ("%s:%s (%s) open", host, serv, remote_host_name);
     }
 
   freeaddrinfo (whereto);
@@ -732,7 +750,7 @@ connect_server_socket (char *remote_addr, char *remote_port,
     verbose_msg ("connect to %s:%s from %s:%s",
 	         remote_host, remote_serv, host, serv);
   else
-    verbose_msg ("connect to %s:%s [%s] from %s:%s [%s]",
+    verbose_msg ("connect to %s:%s (%s) from %s:%s (%s)",
 	         remote_host, remote_serv, remote_host_name,
 		 host, serv, local_host_name);
 

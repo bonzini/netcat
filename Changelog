@@ -1,4 +1,5 @@
 2.0-alpha4
+	connecting to IPv6 servers without the -6 option works
 	use getnameinfo to restore printing of resolved host names
 	portability improvements
 2.0-alpha3
