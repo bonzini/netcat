@@ -150,8 +150,10 @@ static int find_nl (char *buf, int n);
 static unsigned short *make_port_block (int lo, int hi);
 static void exec_child_pr00gie (char *pr00gie);
 static int bind_socket (char *local_addr, char *local_port, int proto);
-static int connect_socket (char *remote_addr, char *remote_port, char *local_addr, char *local_port, int proto);
-static int connect_server_socket (char *remote_addr, char *remote_port, char *local_addr, char *local_port, int proto);
+static int connect_socket (char *remote_addr, char *remote_port,
+			   char *local_addr, char *local_port, int proto);
+static int connect_server_socket (char *remote_addr, char *remote_port,
+			          char *local_addr, char *local_port, int proto);
 static int test_udp_port (int fd, char *host);
 static void hex_dump (char dir, int obc, char *buf, int bc);
 static int answer_telnet_negotiation (unsigned char *buf, int size);
@@ -469,8 +471,10 @@ void
 get_sock_name (struct sockaddr *sa, int salen, char *host, char *serv,
 	       char *name, char *default_name, char *default_serv)
 {
+  int flags = o_proto == IPPROTO_UDP ? NI_DGRAM : 0;
+
   gai_errno = getnameinfo (sa, salen, host, NI_MAXHOST, serv, NI_MAXSERV,
-			   NI_NUMERICSERV | NI_NUMERICHOST);
+			   flags | NI_NUMERICSERV | NI_NUMERICHOST);
   errno = 0;
   if (gai_errno)
     {
@@ -480,7 +484,8 @@ get_sock_name (struct sockaddr *sa, int salen, char *host, char *serv,
 
   if (name && !o_numeric)
     {
-      gai_errno = getnameinfo (sa, salen, name, NI_MAXHOST, NULL, 0, 0);
+      gai_errno = getnameinfo (sa, salen, name, NI_MAXHOST, NULL, 0,
+			       flags | NI_NAMEREQD);
       if (gai_errno)
         strcpy (name, ADDR_STRING (default_name));
     }
@@ -495,7 +500,8 @@ get_sock_name (struct sockaddr *sa, int salen, char *host, char *serv,
    an unconnected TCP or UDP socket to listen on.
    Examines various global o_blah flags to figure out what-all to do. */
 int
-connect_socket (char *remote_addr, char *remote_port, char *local_addr, char *local_port, int proto)
+connect_socket (char *remote_addr, char *remote_port,
+		char *local_addr, char *local_port, int proto)
 {
   char host[NI_MAXHOST+1], serv[NI_MAXSERV+1], remote_host_name[NI_MAXHOST+1];
   struct addrinfo *whereto;
@@ -532,7 +538,7 @@ connect_socket (char *remote_addr, char *remote_port, char *local_addr, char *lo
     }
 
   if (rc < 0 ||
-      (o_nostdin && o_proto == IPPROTO_UDP && !test_udp_port (fd, remote_addr)))
+      (o_nostdin && proto == IPPROTO_UDP && !test_udp_port (fd, remote_addr)))
     {
       /* Clean up junked socket FD!! */
       if (fd >= 0)
@@ -577,7 +583,8 @@ connect_socket (char *remote_addr, char *remote_port, char *local_addr, char *lo
    given host/port args, any connections from elsewhere are rejected.  This
    in conjunction with local-address binding should limit things nicely... */
 int
-connect_server_socket (char *remote_addr, char *remote_port, char *local_addr, char *local_port, int proto)
+connect_server_socket (char *remote_addr, char *remote_port,
+		       char *local_addr, char *local_port, int proto)
 {
   struct addrinfo *whereto;
   struct sockaddr sai_remote, sai_local;
