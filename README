@@ -1,0 +1,88 @@
+Netcat 2.0
+==========                                                         /\_/\
+                                                                  / 0 0 \
+Netcat is a simple Unix utility which reads and writes data      ====v====
+across network connections, using TCP or UDP protocol.            \  W  /
+It is designed to be a reliable "back-end" tool that can          |     |     _
+be used directly or easily driven by other programs and           / ___ \    /
+scripts.  At the same time, it is a feature-rich network         / /   \ \  |
+debugging and exploration tool, since it can create almost      (((-----)))-'
+any kind of connection you would need and has several            /
+interesting built-in capabilities.  Netcat, or "nc" as the      (      ___
+actual program is named, should have been supplied long ago      \__.=|___E
+as another one of those cryptic but standard Unix tools.                /
+
+Some of netcat's major features are:
+
+	Outbound or inbound connections, TCP or UDP, to or from any ports
+	Full DNS forward/reverse checking, with appropriate warnings
+	Ability to use any local source port
+	Ability to use any locally-configured network source address
+	Built-in port-scanning capabilities, with randomizer
+	Can read command line arguments from standard input
+	Slow-send mode, one line every N seconds
+	Hex dump of transmitted and received data
+	Ability to let another program service established connections
+	Optional telnet-options responder
+
+A very short list of potential uses:
+
+	Script backends
+	Scanning ports and inventorying services, automated probes
+	Backup handlers
+	File transfers
+	Server testing, simulation, debugging, and hijacking
+	Firewall testing
+	Proxy gatewaying
+	Network performance testing
+	Address spoofing tests
+	Protecting X servers
+	1001 other uses you'll likely come up with
+
+Changes between the 1.10 release and release 2.00:
+
+	Autoconfiscation
+	Source code easier to read
+	Removed DNS checking, too complicated and interacted badly with IPv6
+	Removed source-routing, nobody enables it anymore :-)
+	Support for IPv6
+	Multi-line input for port scanning
+	Quit-upon-end-of-input
+
+Changes between the 1.00 release and release 1.10:
+
+	Better portability -- updated generic.h and Makefile [thanx folks!]
+	Indication of local-end interface address on inbound connections
+	That's *Dave* Borman's telnet, not Paul Borman...
+	Better indication of DNS errors
+	Total byte counts printed if -v -v is used
+	A bunch of front-end driver companion programs and scripts
+	Better handling of stdin arguments-plus-data
+	Hex-dump feature
+	Telnet responder
+	Program exec works inbound or outbound now
+
+Netcat and the associated package was written by *Hobbit* as a product
+of Avian Research, and the last version he released is available in full
+source form with no restrictions save an obligation to give credit where
+due.  Get it via anonymous FTP at avian.org:/src/hacks/nc110.tgz
+which is a gzipped tar file and not to be confused with its version 1.00
+precursor, nc100.tgz.  Other distribution formats can be accomodated upon
+request.  Netcat is also mirrored at the following [faster] sites:
+
+	zippy.telcom.arizona.edu:/pub/mirrors/avian.org/hacks/nc110.tgz
+	ftp.sterling.com:/mirrors/avian.org/src/hacks/nc110.tgz
+	coast.cs.purdue.edu:/pub/tools/unix/netcat/nc110.tgz
+	ftp.rge.com:/pub/security/coast/mirrors/avian.org/netcat/nc110.tgz
+
+This release is not an attempt to steal *Hobbit*'s merits as Netcat's
+author, but rather to keep an extraordinarily useful tool in pace with
+the changes in the Internet, and to make an extraordinarily instructive
+piece of code even more so.
+
+Note that there is another renewed version of Netcat which is included
+in OpenBSD.  These two are not related; this version does keep most of
+the original source code (albeit with renamed variables/functions and
+updated/edited comments), while OpenBSD's is said to be a complete
+rewrite.  OpenBSD's version lacks some features (hexdump, line-by-line,
+multiplexing) but has some more (AF_UNIX sockets and SOCKS support).

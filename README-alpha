@@ -1,0 +1,26 @@
+This release is super-alpha.  If I screwed up your favorite
+platform or your favorite netcat trick, or removed your
+favorite functionality, or otherwise caused you to be
+upset, please tell me at bonzini@gnu.org.  Patches are
+welcome, but flames are too.
+
+I know that netcat -v -v is less useful in that it does not
+do reverse DNS anymore: this is a fall-out of adding IPv6,
+if you know of a generic way (or have a generic routine)
+to extract a numeric address from a `struct sockaddr'
+please tell me.  In the source code, the parts that
+attended to this are marked as #if 0.
+
+I tried to made the source code as readable as possible,
+but I might have missed obvious opportunities: indications
+for these things are also welcome.
+
+Something I have not done for laziness is to add long
+options.  A patch for this is most welcome.
+
+Finally, the conversion of the manual to Texinfo can also
+be improved and might need proofreading.
+
+Thanks in advance,
+
+Paolo
