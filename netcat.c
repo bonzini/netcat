@@ -1211,7 +1211,7 @@ main (int argc, char **argv)
   if (o_listen)
     {
       /* remote_port *can* be NULL here... */ 
-      remote_port = argv[optind]++;	
+      remote_port = argv[optind];
       sock_fd =
 	connect_server_socket (remote_addr, remote_port, local_addr, o_lport,
 			       o_proto);
