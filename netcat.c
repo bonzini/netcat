@@ -78,6 +78,14 @@
 #define SO_REUSEPORT SO_REUSEADDR
 #endif
 
+#ifndef NI_MAXHOST
+#define NI_MAXHOST 1025
+#endif
+
+#ifndef NI_MAXSERV
+#define NI_MAXSERV 32
+#endif
+
 #ifndef HAVE_SIGSETJMP
 #define sigjmp_buf jmp_buf
 #define sigsetjmp(buf, n)  setjmp(buf)
@@ -94,7 +102,7 @@
 /* handy stuff: */
 #define SLEAZE_PORT "31337"
 #define BUF_SIZE 8192
-#define ADDR_STRING(x) ((x) ? (x) : "(any)")
+#define ADDR_STRING(x) ((x) ? (x) : "any")
 
 /* globals: */
 
@@ -192,7 +200,7 @@ va_msg (int verbosity, const char *str, va_list ap)
   putc ('\n', stderr);
 
   /* Check if host-lookup variety of error */
-  if (gai_errno)
+  if (gai_errno && gai_errno != EAI_SYSTEM)
     {
       fprintf (stderr, "netcat: %s\n", gai_strerror (gai_errno));
       gai_errno = 0;
@@ -457,6 +465,28 @@ bind_socket (char *local_addr, char *local_port, int proto)
   return (fd);
 }
 
+void
+get_sock_name (struct sockaddr *sa, int salen, char *host, char *serv,
+	       char *name, char *default_name, char *default_serv)
+{
+  gai_errno = getnameinfo (sa, salen, host, NI_MAXHOST, serv, NI_MAXSERV,
+			   NI_NUMERICSERV | NI_NUMERICHOST);
+  errno = 0;
+  if (gai_errno)
+    {
+      strcpy (host, ADDR_STRING (default_name));
+      strcpy (serv, ADDR_STRING (default_serv));
+     }
+
+  if (name && !o_numeric)
+    {
+      gai_errno = getnameinfo (sa, salen, name, NI_MAXHOST, NULL, 0, 0);
+      if (gai_errno)
+        strcpy (name, ADDR_STRING (default_name));
+    }
+  errno = gai_errno = 0;
+}
+
 /* connect_socket :
    do all the socket stuff, and return an fd for one of
    an open outbound TCP connection
@@ -467,9 +497,11 @@ bind_socket (char *local_addr, char *local_port, int proto)
 int
 connect_socket (char *remote_addr, char *remote_port, char *local_addr, char *local_port, int proto)
 {
+  char host[NI_MAXHOST+1], serv[NI_MAXSERV+1], remote_host_name[NI_MAXHOST+1];
   struct addrinfo *whereto;
+  struct sockaddr sai_remote;
   int fd;
-  int rc;
+  int rc, x;
   errno = 0;
 
   /* grab a socket; set opts.  */
@@ -506,21 +538,37 @@ connect_socket (char *remote_addr, char *remote_port, char *local_addr, char *lo
       if (fd >= 0)
 	close (fd);
       fd = -1;
+    }
 
+  x = sizeof (struct sockaddr);
+  rc = getpeername (fd, (struct sockaddr *) &sai_remote, &x);
+  if (rc < 0)
+    bail ("cannot retrieve peer socket address");
+
+  get_sock_name (&sai_remote, x, host, serv, remote_host_name,
+		 remote_addr, remote_port);
+
+  if (fd == -1)
+    {
       /* if we're scanning at a "one -v" verbosity level, don't print refusals.
          Give it another -v if you want to see everything.  But if we're not
          scanning, we always want an error to be printed for refused connects.  */
-      msg (!port_scan || errno != ECONNREFUSED ? 0 : 2,
-	   "cannot connect to %s:%s",
-	   ADDR_STRING (remote_addr), ADDR_STRING (remote_port));
+      int level = !port_scan || errno != ECONNREFUSED ? 0 : 2;
+      if (o_numeric)
+        msg (level, "cannot connect to %s:%s", host, serv);
+      else
+        msg (level, "cannot connect to %s:%s [%s]", host, serv, remote_host_name);
     }
   else
-    verbose_msg ("%s:%s open", ADDR_STRING (remote_addr),
-		 ADDR_STRING (remote_port));
+    {
+      if (o_numeric)
+        verbose_msg ("%s:%s open", host, serv);
+      else
+        verbose_msg ("%s:%s [%s] open", host, serv, remote_host_name);
+    }
 
   freeaddrinfo (whereto);
   return (fd);
-
 }
 
 /* connect_server_socket :
@@ -532,7 +580,10 @@ int
 connect_server_socket (char *remote_addr, char *remote_port, char *local_addr, char *local_port, int proto)
 {
   struct addrinfo *whereto;
-  struct sockaddr sai_remote;
+  struct sockaddr sai_remote, sai_local;
+  char remote_host[NI_MAXHOST+1], remote_serv[NI_MAXSERV+1];
+  char remote_host_name[NI_MAXHOST+1];
+  char host[NI_MAXHOST+1], serv[NI_MAXSERV+1], local_host_name[NI_MAXHOST+1];
 
   int fd;
   int rc = 0;
@@ -560,27 +611,20 @@ connect_server_socket (char *remote_addr, char *remote_port, char *local_addr, c
 	bail ("cannot open passive socket");
     }
 
-#if 0
-  /* I can't believe I have to do all this to get my own goddamn bound address
-     and port number.  It should just get filled in during bind() or something.
-     All this is only useful if we didn't say -p for listening, since if we
-     said -p we *know* what port we're listening on.  At any rate we won't bother
-     with it all unless we wanted to see it, although listening quietly on a
-     random unknown port is probably not very useful without "netstat". */
   if (o_verbose || !local_port)
     {
       x = sizeof (struct sockaddr);
       rc = getsockname (fd, (struct sockaddr *) &sai_local, &x);
       if (rc < 0)
 	verbose_msg ("local getsockname failed");
-      else if (local_addr)
-	verbose_msg ("listening on %s:%d...",
-		     inet_ntoa (sai_local.sin_addr),
-		     ntohs (sai_local.sin_port));
       else
-	verbose_msg ("listening on any:%d...", ntohs (sai_local.sin_port));
-    }				/* verbose -- whew!! */
-#endif
+	{
+	  get_sock_name (&sai_local, x, host, serv, NULL,
+		         ADDR_STRING (local_addr), ADDR_STRING (local_port));
+	  errno = 0;
+	  verbose_msg ("listening on %s:%s...", host, serv);
+        }
+    }
 
   if (remote_addr || remote_port)
     {
@@ -659,27 +703,31 @@ connect_server_socket (char *remote_addr, char *remote_port, char *local_addr, c
   if (rc < 0)
     bail ("no connection");	/* bail out if any errors so far */
 
-#if 0
-  if (!remote_addr || !remote_port)
-    {
-      /* find out what address the connection was *to* on our end, in case we're
-         doing a listen-on-any on a multihomed machine.  This allows one to
-         offer different services via different alias addresses, such as with
-         FTP virtual hosts. */
-      memset (buf_socket, 0, 64);
-      cp = &buf_socket[32];
-      x = sizeof (struct sockaddr);
-      rc = getsockname (fd, (struct sockaddr *) &sai_local, &x);
-      if (rc < 0)
-        verbose_msg ("getsockname on active socket failed");
-      strcpy (cp, inet_ntoa (sai_local.sin_addr));
+  /* find out what address the connection was *to* on our end, in case we're
+     doing a listen-on-any on a multihomed machine.  This allows one to
+     offer different services via different alias addresses, such as with
+     FTP virtual hosts. */
+  x = sizeof (struct sockaddr);
+  rc = getpeername (fd, (struct sockaddr *) &sai_remote, &x);
+  if (rc < 0)
+    verbose_msg ("getpeername on active socket failed");
+  get_sock_name (&sai_remote, x, remote_host, remote_serv, remote_host_name,
+		 remote_addr, remote_port);
 
-      verbose_msg ("connect to [%s] from %s:%d [%s]",	/* oh, you're okay.. */
-	           cp, whozis->name, z, whozis->addrs[0]);
-    }
-#else
-  verbose_msg ("connection established");
-#endif
+  x = sizeof (struct sockaddr);
+  rc = getsockname (fd, (struct sockaddr *) &sai_local, &x);
+  if (rc < 0)
+    verbose_msg ("getsockname on active socket failed");
+  get_sock_name (&sai_local, x, host, serv, local_host_name,
+		 local_addr, local_port);
+
+  if (o_numeric)
+    verbose_msg ("connect to %s:%s from %s:%s",
+	         remote_host, remote_serv, host, serv);
+  else
+    verbose_msg ("connect to %s:%s [%s] from %s:%s [%s]",
+	         remote_host, remote_serv, remote_host_name,
+		 host, serv, local_host_name);
 
   if (remote_addr || remote_port)
     freeaddrinfo (whereto);
