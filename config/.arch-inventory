@@ -1,4 +1,0 @@
-precious ^missing$
-precious ^depcomp$
-precious ^install-sh$
-precious ^texinfo\.tex$

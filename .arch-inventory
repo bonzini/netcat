@@ -1,2 +1,0 @@
-precious \.info(-[0-9]+)?$
-unrecognized ^poll\.h$
