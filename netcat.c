@@ -157,7 +157,7 @@ static int connect_server_socket (char *remote_addr, char *remote_port,
 			          char *local_addr, char *local_port, int proto);
 static int test_udp_port (int fd, char *host);
 static void hex_dump (char dir, int obc, char *buf, int bc);
-static int answer_telnet_negotiation (unsigned char *buf, int size);
+static int answer_telnet_negotiation (char *buf, int size);
 static int socket_loop ();
 static void usage (void);
 int main (int argc, char **argv);
@@ -167,7 +167,7 @@ int main (int argc, char **argv);
     {							\
       debug_msg ("wrote %d to stdout", n);		\
       if (dump_fd != -1)				\
-        hex_dump ('>', wrote_out, buf, n);		\
+        hex_dump ('>', wrote_out, (char *)buf, n);	\
       wrote_out += n;					\
     }							\
   while(0)
@@ -177,7 +177,7 @@ int main (int argc, char **argv);
     {							\
       debug_msg ("wrote %d to net", n);			\
       if (dump_fd != -1)				\
-        hex_dump ('<', wrote_net, buf, n);		\
+        hex_dump ('<', wrote_net, (char *)buf, n);	\
       wrote_net += n;					\
     }							\
   while(0)
@@ -518,8 +518,8 @@ connect_socket (char *remote_addr, char *remote_port,
   char host[NI_MAXHOST+1], serv[NI_MAXSERV+1], remote_host_name[NI_MAXHOST+1];
   struct addrinfo *whereto;
   struct sockaddr sai_remote;
-  int fd;
-  int rc, x;
+  int fd, rc;
+  socklen_t x;
   errno = 0;
 
   gai_hints.ai_socktype = proto == IPPROTO_UDP ? SOCK_DGRAM : SOCK_STREAM;
@@ -613,7 +613,7 @@ connect_server_socket (char *remote_addr, char *remote_port,
 
   int fd;
   int rc = 0;
-  int x;
+  socklen_t x;
 
   errno = 0;
 
@@ -673,7 +673,7 @@ connect_server_socket (char *remote_addr, char *remote_port,
       if (proto == IPPROTO_UDP)
         {
 	  struct sockaddr whozis;
-	  int x;
+	  socklen_t x;
 
           /* Do timeout for initial connect */
           if (sigsetjmp (jbuf, 1) == 0)
@@ -865,7 +865,7 @@ hex_dump (char dir, int obc, char *buf, int bc)
    This doesn't modify any data buffers -- it just puts that onto
    the outgoing stream.  Idea and codebase from Mudge@l0pht.com. */
 int
-answer_telnet_negotiation (unsigned char *buf, int size)
+answer_telnet_negotiation (char *buf, int size)
 {
   unsigned char *p, *end, *dest;
 
@@ -873,7 +873,7 @@ answer_telnet_negotiation (unsigned char *buf, int size)
   if (!p)
     return size;
 
-  for (end = buf + size; p < end;)
+  for (end = (unsigned char *) buf + size; p < end;)
     {
       if (*p != IAC)		/* check for TIAC */
 	{
@@ -896,7 +896,7 @@ answer_telnet_negotiation (unsigned char *buf, int size)
       p += 3;
     }
 
-  return dest - buf;
+  return dest - (unsigned char *)buf;
 }
 
 /* socket_loop :

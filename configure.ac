@@ -32,13 +32,19 @@ AC_CHECK_FUNCS(strchr strrchr)
 AC_CHECK_TYPE(sigjmp_buf,
   [AC_DEFINE(HAVE_SIGSETJMP, 1, [Define to 1 if you have sigsetjmp & friends])],
   [],
-  [#include <signal.h>
-  #include <setjmp.h>])
+  [@%:@include <signal.h>
+  @%:@include <setjmp.h>])
+
+AC_CHECK_TYPE(socklen_t,
+  [],
+  [AC_DEFINE(socklen_t, int, [Define to int if you do not have socklen_t])],
+  [AC_INCLUDES_DEFAULT
+   @%:@include <sys/socket.h>])
 
 AC_REPLACE_FUNCS(dup2 strtoul)
 
 # TODO:
-# also check for arpa/inet.h netdb.h netinet/in.h poll.h
+# also check for arpa/inet.h netdb.h netinet/in.h
 # also check for alarm getaddrinfo random poll socket
 
 AC_CONFIG_FILES([Makefile])
