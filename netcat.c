@@ -149,7 +149,7 @@ static RETSIGTYPE timeout_handler (int sig);
 static void set_timeout (int secs);
 static int find_nl (char *buf, int n);
 static unsigned short *make_port_block (int lo, int hi);
-static void exec_child_pr00gie (char *pr00gie);
+static void exec_child_pr00gie (char *pr00gie, int shell);
 static int bind_socket (char *local_addr, char *local_port, int proto);
 static int connect_socket (char *remote_addr, char *remote_port,
 			   char *local_addr, char *local_port, int proto);
@@ -358,7 +358,7 @@ void
 #ifdef __GNUC__
   __attribute__ ((noreturn))
 #endif
-exec_child_pr00gie (char *pr00gie)
+exec_child_pr00gie (char *pr00gie, int shell)
 {
   char *p;
 
@@ -370,15 +370,24 @@ exec_child_pr00gie (char *pr00gie)
   dup2 (0, 2);
   sock_fd = 0;
 
-  /* Prepare a shorter argv[0] */
-  p = strrchr (pr00gie, '/');
-  if (p)
-    p++;
+  if (shell)
+    {
+      debug_msg ("gonna exec %s using /bin/sh...", pr00gie);
+      execl ("/bin/sh", "sh", "-c", pr00gie, NULL);
+    }
   else
-    p = pr00gie;
+    {
+      /* Prepare a shorter argv[0] */
+      p = strrchr (pr00gie, '/');
+      if (p)
+        p++;
+      else
+        p = pr00gie;
 
-  debug_msg ("gonna exec %s as %s...", pr00gie, p);
-  execl (pr00gie, p, NULL);
+      debug_msg ("gonna exec %s as %s...", pr00gie, p);
+      execl (pr00gie, p, NULL);
+    }
+
   bail ("failed to exec %s", pr00gie);
 }
 
@@ -1118,6 +1127,7 @@ main (int argc, char **argv)
   char *remote_port = NULL;
   char local_port_buf[10];
   char remote_port_buf[10];
+  int o_pr00gie_shell = 0;	/* ptr to -e arg */
   char *o_pr00gie = NULL;	/* ptr to -e arg */
   char *o_wfile = NULL;		/* ptr to -o arg */
   int o_listen = 0;
@@ -1135,7 +1145,7 @@ main (int argc, char **argv)
     usage (1);			/* exits by itself */
 
   /* optarg, optind = next-argv-component [i.e. flag arg]; optopt = last-char */
-  while ((x = getopt (argc, argv, "46be:hi::lno:p:q::rs:tuvw:z")) != EOF)
+  while ((x = getopt (argc, argv, "46bc:e:hi::lno:p:q::rs:tuvw:z")) != EOF)
     {
       switch (x)
 	{
@@ -1148,7 +1158,12 @@ main (int argc, char **argv)
 	case 'b':		/* broadcast mode */
 	  o_broadcast++;
 	  break;
+	case 'c':		/* prog to exec */
+          o_pr00gie_shell = 1;
+	  o_pr00gie = optarg;
+	  break;
 	case 'e':		/* prog to exec */
+          o_pr00gie_shell = 0;
 	  o_pr00gie = optarg;
 	  break;
 	case 'h':
@@ -1238,7 +1253,7 @@ main (int argc, char **argv)
 	bail ("no connection");
 
       if (o_pr00gie)		/* -e given? */
-	exec_child_pr00gie (o_pr00gie);
+	exec_child_pr00gie (o_pr00gie, o_pr00gie_shell);
 
       x = socket_loop ();
       exit (x);
@@ -1336,7 +1351,7 @@ main (int argc, char **argv)
 
 	  /* Exec is valid for outbound, too! */
 	  if (o_pr00gie)
-	    exec_child_pr00gie (o_pr00gie);
+	    exec_child_pr00gie (o_pr00gie, o_pr00gie_shell);
 
 	  if (!o_nostdin)
 	    {

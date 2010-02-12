@@ -1,3 +1,5 @@
+A few years later
+	add -c, taken from version at nc110.sf.net
 2.0-alpha4
 	connecting to IPv6 servers without the -6 option works
 	use getnameinfo to restore printing of resolved host names
