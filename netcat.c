@@ -159,7 +159,7 @@ static int test_udp_port (int fd, char *host);
 static void hex_dump (char dir, int obc, char *buf, int bc);
 static int answer_telnet_negotiation (char *buf, int size);
 static int socket_loop ();
-static void usage (void);
+static void usage (int exit_code);
 int main (int argc, char **argv);
 
 #define FROM_NET(buf, n)				\
@@ -1069,10 +1069,9 @@ socket_loop ()
 /* usage :
    the obvious */
 void
-usage (void)
+usage (int exit_code)
 {
-  errno = 0;
-  msg (0, "%s %s\n\
+  fprintf (exit_code ? stderr : stdout, "%s %s\n\
 connect to somewhere:	nc [-options] hostname port(s)... \n\
 listen for inbound:	nc -l [-options] [hostname [port]]\n\
 options:\n\
@@ -1097,7 +1096,7 @@ options:\n\
 \n\
 When connecting, port numbers can be individual or inclusive ranges\n\
 in the form LO-HI\n", PACKAGE, VERSION);
-  exit (0);
+  exit (exit_code);
 }
 
 /* main :
@@ -1133,7 +1132,7 @@ main (int argc, char **argv)
   /* if no args given at all, get 'em from stdin, construct an argv, and treat
      anything left over as ports. */
   if (argc == 1)
-    usage ();			/* exits by itself */
+    usage (1);			/* exits by itself */
 
   /* optarg, optind = next-argv-component [i.e. flag arg]; optopt = last-char */
   while ((x = getopt (argc, argv, "46be:hi::lno:p:q::rs:tuvw:z")) != EOF)
@@ -1153,7 +1152,7 @@ main (int argc, char **argv)
 	  o_pr00gie = optarg;
 	  break;
 	case 'h':
-	  usage ();		/* exits by itself */
+	  usage (0);		/* exits by itself */
 	case 'i':		/* line-interval time */
 	  o_interval = optarg ? atoi (optarg) : 0;
 	  if (o_interval < 0)
