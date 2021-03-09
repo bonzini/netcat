@@ -137,6 +137,7 @@ int o_wait = 0;
 int o_telnet = 0;
 int o_random = 0;
 int o_nostdin = 0;
+int no_break_on_disconnect = 0;
 
 /* Prototypes. */
 static int test_udp_port (int fd, char *where);
@@ -1087,14 +1088,16 @@ options:\n\
 	-4		use IPv4 addresses\n\
 	-6		use IPv6 addresses\n\
 	-b		allow broadcasts\n\
+        -cCOMM          command to execute after establishing connection\n\
 	-ePROG		program to exec after establishing connection\n\
 	-h		this cruft\n\
 	-i[SECS]	delay interval for lines sent and ports scanned\n\
+        -k              keep listening on disconnect\n\
 	-l		listen mode, for inbound connects\n\
 	-n		numeric-only IP addresses, no DNS\n\
 	-oFILE		hex dump of traffic\n\
 	-pPORT		local port number (useful when listening)\n\
-	-q[SECS]         quit SECS after EOF on stdin\n\
+	-q[SECS]        quit SECS after EOF on stdin\n\
 	-r		randomize local and remote ports\n\
 	-sADDR		local source address\n\
 	-t		answer Telnet negotiation\n\
@@ -1145,7 +1148,7 @@ main (int argc, char **argv)
     usage (1);			/* exits by itself */
 
   /* optarg, optind = next-argv-component [i.e. flag arg]; optopt = last-char */
-  while ((x = getopt (argc, argv, "46bc:e:hi::lno:p:q::rs:tuvw:z")) != EOF)
+  while ((x = getopt (argc, argv, "46bc:e:hi::lno:p:q::rs:tuvw:z:k")) != EOF)
     {
       switch (x)
 	{
@@ -1211,6 +1214,9 @@ main (int argc, char **argv)
 	case 'z':		/* little or no data xfer */
 	  o_nostdin++;
 	  break;
+	case 'k':
+	  no_break_on_disconnect = 1;
+	  break;
 	default:
 	  errno = 0;
 	  bail ("Try nc -h for help");
@@ -1243,21 +1249,29 @@ main (int argc, char **argv)
      wrapper script can handle such things... */
   if (o_listen)
     {
-      /* remote_port *can* be NULL here... */ 
-      remote_port = argv[optind];
-      sock_fd =
-	connect_server_socket (remote_addr, remote_port, local_addr, o_lport,
-			       o_proto);
-
-      if (sock_fd < 0)
-	bail ("no connection");
-
-      if (o_pr00gie)		/* -e given? */
-	exec_child_pr00gie (o_pr00gie, o_pr00gie_shell);
-
-      x = socket_loop ();
-      exit (x);
-    }				/* o_listen */
+        int listen = 1;
+      /* remote_port *can* be NULL here... */
+        remote_port = argv[optind];
+        while (listen) { /* Keep listening until told to quit */
+	        sock_fd = connect_server_socket (remote_addr, remote_port, local_addr,
+                                             o_lport, o_proto);
+            if (sock_fd < 0)
+                  bail ("no connection");
+            
+            if (fork() == 0) { /* Fork and execute in child */
+                if (o_pr00gie)      /* -e given? */
+                    exec_child_pr00gie (o_pr00gie, o_pr00gie_shell);
+    
+                x = socket_loop ();
+                exit (x);
+            } else { /* If in parent, check for -k option */
+                if (!no_break_on_disconnect) { /* If no -k provided, quit */
+                    listen = 0;
+                }
+            }
+        }
+        exit (x);
+  }				/* o_listen */
 
   /* fall thru to outbound connects.  Now we're more picky about args... */
   if (!remote_addr)
